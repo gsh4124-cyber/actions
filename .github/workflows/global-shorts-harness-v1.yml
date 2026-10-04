@@ -1,22 +1,35 @@
-name: Global Shorts Harness V1 Validation
+name: actions Global Shorts Harness Recovery Validation
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - 'global_shorts_factory/harness_v1/**'
-      - '.github/workflows/global-shorts-harness-v1.yml'
+    inputs:
+      primary_blocker_evidence:
+        description: 'Verified hwangje-vault Actions blocker evidence / reference'
+        required: true
+        type: string
+      support_scope:
+        description: 'diagnostic | recovery | temporary_support'
+        required: true
+        type: choice
+        options:
+          - diagnostic
+          - recovery
+          - temporary_support
+      return_to_primary_plan:
+        description: 'How the result returns to hwangje-vault primary'
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 jobs:
-  validate-harness:
+  support-harness-validation:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
-      - name: Preserve support contract
+      - name: Validate support-only contract
         run: python global_shorts_factory/factory_selfcheck.py
       - name: Unit tests
         working-directory: global_shorts_factory/harness_v1
@@ -32,13 +45,13 @@ jobs:
           python -m pip install --disable-pip-version-check pillow==11.3.0
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
-      - name: Render L1 three-keyframe Visual Proof
+      - name: Render L1 three-keyframe recovery Visual Proof
         run: |
           python global_shorts_factory/harness_v1/proof_renderer.py \
             global_shorts_factory/harness_v1/examples/odd_one_out_001.json \
             --out /tmp/harness_v1/proof
           test -s /tmp/harness_v1/proof/contact_sheet.png
-      - name: Render full Odd One Out episode
+      - name: Render recovery reference episode
         run: |
           python global_shorts_factory/harness_v1/full_renderer.py \
             global_shorts_factory/harness_v1/examples/odd_one_out_001.json \
@@ -59,11 +72,27 @@ jobs:
             -frames:v 1 /tmp/harness_v1/render/review_sheet.jpg
           test -s /tmp/harness_v1/render/final.mp4
           test -s /tmp/harness_v1/render/review_sheet.jpg
-      - name: Upload scene plan, Visual Proof, and full render
+      - name: Record fallback invocation context
+        run: |
+          mkdir -p /tmp/harness_v1
+          cat > /tmp/harness_v1/support_context.json <<EOF
+          {
+            "marker": "ACTIONS_GLOBAL_SHORTS_HARNESS_RECOVERY_PASS",
+            "role": "SUPPORT_RECOVERY_FALLBACK_ONLY",
+            "primary_repository": "gsh4124-cyber/hwangje-vault",
+            "support_repository": "gsh4124-cyber/actions",
+            "primary_blocker_evidence": "${{ inputs.primary_blocker_evidence }}",
+            "support_scope": "${{ inputs.support_scope }}",
+            "return_to_primary_plan": "${{ inputs.return_to_primary_plan }}",
+            "production_owner_claimed": false
+          }
+          EOF
+      - name: Upload recovery scene plan, Visual Proof, and reference render
         uses: actions/upload-artifact@v4
         with:
-          name: global-shorts-harness-v1-full-render
+          name: actions-global-shorts-harness-recovery-proof
           path: |
+            /tmp/harness_v1/support_context.json
             /tmp/harness_v1/scene_plan.json
             /tmp/harness_v1/proof
             /tmp/harness_v1/render/final.mp4
