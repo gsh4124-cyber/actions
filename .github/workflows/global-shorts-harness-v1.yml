@@ -1,3 +1,4 @@
+# Proof approval validator primary source: hwangje-vault commit c89332ea913894f313263b7f8ec165c63da04d74
 name: actions Global Shorts Harness Recovery Validation
 
 on:
@@ -20,6 +21,20 @@ on:
         required: true
         type: string
 
+      render_stage:
+        description: 'Proof only by default. Full requires a previously committed actual-artifact review receipt.'
+        required: true
+        default: proof
+        type: choice
+        options:
+          - proof
+          - full
+      proof_qa_receipt:
+        description: 'Committed qa/*.json receipt binding actual reviewed proof hashes; required for full.'
+        required: false
+        default: ''
+        type: string
+
 permissions:
   contents: read
 
@@ -33,7 +48,7 @@ jobs:
         run: python global_shorts_factory/factory_selfcheck.py
       - name: Unit tests
         working-directory: global_shorts_factory/harness_v1
-        run: python -m unittest -v test_harness.py
+        run: python -m unittest -v test_harness.py test_proof_gate.py
       - name: Build reference Odd One Out scene plan
         run: |
           python global_shorts_factory/harness_v1/harness.py \
@@ -51,7 +66,22 @@ jobs:
             global_shorts_factory/harness_v1/examples/odd_one_out_001.json \
             --out /tmp/harness_v1/proof
           test -s /tmp/harness_v1/proof/contact_sheet.png
+      - name: Verify actual-artifact Proof QA receipt before full render
+        id: proof-approval
+        if: ${{ inputs.render_stage == 'full' }}
+        env:
+          PROOF_QA_RECEIPT: ${{ inputs.proof_qa_receipt }}
+        run: |
+          test -n "$PROOF_QA_RECEIPT"
+          git ls-files --error-unmatch -- "$PROOF_QA_RECEIPT" >/dev/null
+          python global_shorts_factory/harness_v1/proof_gate.py \
+            --spec global_shorts_factory/harness_v1/examples/odd_one_out_001.json \
+            --proof /tmp/harness_v1/proof \
+            --receipt "$PROOF_QA_RECEIPT" \
+            --receipt-root global_shorts_factory/harness_v1/qa
+          echo "approved=true" >> "$GITHUB_OUTPUT"
       - name: Render recovery reference episode
+        if: ${{ success() && inputs.render_stage == 'full' && steps.proof-approval.outputs.approved == 'true' }}
         run: |
           python global_shorts_factory/harness_v1/full_renderer.py \
             global_shorts_factory/harness_v1/examples/odd_one_out_001.json \
@@ -72,22 +102,32 @@ jobs:
             -frames:v 1 /tmp/harness_v1/render/review_sheet.jpg
           test -s /tmp/harness_v1/render/final.mp4
           test -s /tmp/harness_v1/render/review_sheet.jpg
-      - name: Record fallback invocation context
+      - name: Record fallback invocation context without claiming visual QA
+        env:
+          PRIMARY_BLOCKER_EVIDENCE: ${{ inputs.primary_blocker_evidence }}
+          SUPPORT_SCOPE: ${{ inputs.support_scope }}
+          RETURN_TO_PRIMARY_PLAN: ${{ inputs.return_to_primary_plan }}
+          RENDER_STAGE: ${{ inputs.render_stage }}
+          FULL_RENDER_APPROVED: ${{ steps.proof-approval.outputs.approved }}
         run: |
-          mkdir -p /tmp/harness_v1
-          cat > /tmp/harness_v1/support_context.json <<EOF
-          {
-            "marker": "ACTIONS_GLOBAL_SHORTS_HARNESS_RECOVERY_PASS",
-            "role": "SUPPORT_RECOVERY_FALLBACK_ONLY",
-            "primary_repository": "gsh4124-cyber/hwangje-vault",
-            "support_repository": "gsh4124-cyber/actions",
-            "primary_blocker_evidence": "${{ inputs.primary_blocker_evidence }}",
-            "support_scope": "${{ inputs.support_scope }}",
-            "return_to_primary_plan": "${{ inputs.return_to_primary_plan }}",
-            "production_owner_claimed": false
+          python - <<'PY'
+          import json, os, pathlib
+          context = {
+              "marker": "ACTIONS_GLOBAL_SHORTS_PROOF_ARTIFACT_READY",
+              "role": "SUPPORT_RECOVERY_FALLBACK_ONLY",
+              "primary_repository": "gsh4124-cyber/hwangje-vault",
+              "support_repository": "gsh4124-cyber/actions",
+              "primary_blocker_evidence": os.environ["PRIMARY_BLOCKER_EVIDENCE"],
+              "support_scope": os.environ["SUPPORT_SCOPE"],
+              "return_to_primary_plan": os.environ["RETURN_TO_PRIMARY_PLAN"],
+              "render_stage": os.environ["RENDER_STAGE"],
+              "full_render_receipt_validated": os.environ["FULL_RENDER_APPROVED"] == "true",
+              "visual_qa_performed_by_workflow": False,
+              "production_owner_claimed": False,
           }
-          EOF
-      - name: Upload recovery scene plan, Visual Proof, and reference render
+          pathlib.Path("/tmp/harness_v1/support_context.json").write_text(json.dumps(context, indent=2), encoding="utf-8")
+          PY
+      - name: Upload recovery scene plan, proof artifacts, and approved render if present
         uses: actions/upload-artifact@v4
         with:
           name: actions-global-shorts-harness-recovery-proof

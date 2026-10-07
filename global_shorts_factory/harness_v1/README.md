@@ -123,3 +123,17 @@ Start with total `1 commercial PASS + published episode/day`. Do not scale becau
 - Publishing fallback garbage because a quota/dependency failed.
 - Treating a single view spike as a winner.
 - Asking the user to run CLI/repo steps as the production path.
+
+## Proof-to-full approval interlock
+
+The dispatch default is `render_stage=proof`. Full rendering requires an explicit
+`render_stage=full` and a committed `qa/*.json` actual-artifact review receipt
+validated against the episode spec and all four proof hashes. Missing, failed,
+unknown, self-report, or stale receipts stop before full render. No new episode
+approval is supplied automatically by this workflow.
+
+The validator and regression tests are execution mirrors of
+`gsh4124-cyber/hwangje-vault/tools/global_shorts` (primary commit
+`c89332ea913894f313263b7f8ec165c63da04d74`). Visual QA still requires opening the
+actual proof files; receipt validation and test PASS do not perform visual QA.
+The support-only invocation contract remains unchanged.
