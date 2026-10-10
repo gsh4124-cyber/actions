@@ -3,6 +3,8 @@ on:
   push:
     paths:
       - 'global-shorts/odd_factory_v6.py'
+      - 'global-shorts/validate_release.py'
+      - 'global-shorts/test_release_gate.py'
       - '.github/workflows/odd-factory-v6.yml'
   workflow_dispatch:
 permissions:
@@ -19,16 +21,20 @@ jobs:
           sudo apt-get install -y blender ffmpeg
           blender --version
           ffmpeg -version | head -n 1
-      - name: Syntax check
-        run: python3 -m py_compile global-shorts/odd_factory_v6.py
+      - name: Syntax and release gate regression tests
+        run: |
+          python3 -m py_compile global-shorts/odd_factory_v6.py global-shorts/validate_release.py
+          python3 global-shorts/test_release_gate.py
       - name: Smoke render (cheap Blender execution test)
         run: |
           mkdir -p output
+          set -o pipefail
           ODD_FACTORY_SMOKE=1 blender -b -t 2 --python global-shorts/odd_factory_v6.py 2>&1 | tee output/smoke.log
           test -s output/smoke.png
       - name: Render canonical scene
         run: |
           mkdir -p output
+          set -o pipefail
           blender -b -t 2 --python global-shorts/odd_factory_v6.py 2>&1 | tee output/blender.log
           test -s output/diagnostic.png
           test "$(find output -maxdepth 1 -name 'frame_*.png' | wc -l)" -eq 300
