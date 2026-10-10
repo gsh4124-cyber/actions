@@ -19,7 +19,8 @@ def cyl(name,loc,r,d,mat):
  bpy.ops.mesh.primitive_cylinder_add(vertices=48,radius=r,depth=d,location=loc)
  o=bpy.context.object;o.name=name;o.data.materials.append(mat)
  mod=o.modifiers.new('Bevel','BEVEL');mod.width=.012;mod.segments=2
- o.modifiers.new('Normals','WEIGHTED_NORMAL')
+ o.data.use_auto_smooth=True if hasattr(o.data,'use_auto_smooth') else None
+ # Weighted normals are optional for these flat mechanical surfaces.
  return o
 def gear(name,x,y,mat):
  n=16;pts=[]
@@ -34,7 +35,7 @@ def gear(name,x,y,mat):
  mesh=bpy.data.meshes.new(name);mesh.from_pydata(vertices,[],faces);mesh.update()
  ob=bpy.data.objects.new(name,mesh);s.collection.objects.link(ob);ob.location=(x,y,.06);ob.data.materials.append(mat)
  bev=ob.modifiers.new('Bevel','BEVEL');bev.width=.006;bev.segments=2
- ob.modifiers.new('Normals','WEIGHTED_NORMAL')
+ # Keep bevel, avoid unsupported weighted-normal modifier.
  cyl(name+' axle',(x,y,.20),.06,.17,black)
  return ob
 for row in range(3):
