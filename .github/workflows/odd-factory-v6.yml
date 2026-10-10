@@ -6,6 +6,10 @@ on:
       - 'global-shorts/validate_release.py'
       - 'global-shorts/test_release_gate.py'
       - '.github/workflows/odd-factory-v6.yml'
+  pull_request:
+    paths:
+      - 'global-shorts/**'
+      - '.github/workflows/odd-factory-v6.yml'
   workflow_dispatch:
 permissions:
   contents: read
