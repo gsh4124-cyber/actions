@@ -5,7 +5,7 @@ bpy.ops.object.delete(use_global=False)
 s=bpy.context.scene
 s.render.engine='BLENDER_EEVEE_NEXT' if bpy.app.version >= (4,2,0) else 'BLENDER_EEVEE'
 s.render.resolution_x=1080;s.render.resolution_y=1920;s.render.resolution_percentage=100;s.render.fps=30
-s.frame_start=1;s.frame_end=90
+s.frame_start=1;s.frame_end=300
 s.world.color=(0.025,0.025,0.03)
 def material(name,rgb,metal,rough):
  m=bpy.data.materials.new(name);m.diffuse_color=(*rgb,1);m.use_nodes=True
@@ -43,7 +43,7 @@ for row in range(3):
   cyl('Mount'+str(idx),(x,y,-.16),.82,.12,black)
   a=gear('GearA'+str(idx),x-.32,y,steel)
   b=gear('GearB'+str(idx),x+.32,y,brass)
-  for frame in (1,90):
+  for frame in (1,300):
    t=(frame-1)/30*1.3
    a.rotation_euler.z=t;b.rotation_euler.z=math.pi/16+(t if idx==4 else -t)
    a.keyframe_insert(data_path='rotation_euler',index=2,frame=frame)
@@ -55,9 +55,16 @@ for name,loc,power,size in [('Key',(1,-3,8),1600,5),('Fill',(-5,0,5),950,5),('Ri
  bpy.ops.object.light_add(type='AREA',location=loc);o=bpy.context.object;o.name=name;o.data.energy=power;o.data.shape='DISK';o.data.size=size
  o.rotation_euler=(Vector((0,0,0))-o.location).to_track_quat('-Z','Y').to_euler()
 os.makedirs('output',exist_ok=True)
+# Keep the diagnostic and animation in the same canonical scene.
+for obj in s.objects:
+ if obj.type=='MESH' and obj.name.startswith('Gear'):
+  assert len(obj.data.vertices)>0, 'Empty gear mesh'
+assert s.frame_end-s.frame_start+1==300
 s.render.image_settings.file_format='PNG'
 s.frame_set(30);s.render.filepath=os.path.abspath('output/diagnostic.png')
 bpy.ops.render.render(write_still=True)
 s.render.resolution_percentage=50
+s.render.image_settings.color_mode='RGB'
+s.render.image_settings.color_depth='8'
 s.render.filepath=os.path.abspath('output/frame_')
 bpy.ops.render.render(animation=True)
