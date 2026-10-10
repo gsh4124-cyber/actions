@@ -38,10 +38,10 @@ jobs:
           assert p.exists() and p.stat().st_size>100000, 'MP4 missing or too small'
           meta=json.loads(subprocess.check_output(['ffprobe','-v','error','-show_streams','-show_format','-of','json',str(p)]))
           v=next(s for s in meta['streams'] if s['codec_type']=='video')
-          assert (int(v['width']),int(v['height']))==(540,960), 'Unexpected resolution'
+          assert (int(v['width']),int(v['height']))==(1080,1920), 'Unexpected resolution'
           assert v['r_frame_rate']=='30/1', 'Unexpected fps'
           assert 9.9<float(meta['format']['duration'])<10.1, 'Unexpected duration'
-          pathlib.Path('output/validation.json').write_text(json.dumps({'status':'TECHNICAL_PASS','resolution':'540x960','fps':30,'duration':float(meta['format']['duration']),'visual_qa':'NOT_VERIFIED','publish_approved':False},indent=2))
+          pathlib.Path('output/validation.json').write_text(json.dumps({'status':'TECHNICAL_PASS','resolution':'1080x1920','fps':30,'duration':float(meta['format']['duration']),'visual_qa':'NOT_VERIFIED','publish_approved':False},indent=2))
           print('Technical validation passed; visual QA still required')
           PY
       - name: Upload diagnostics even on failure
