@@ -1,0 +1,32 @@
+name: Odd Factory V6 Blender render
+on:
+  push:
+    paths:
+      - 'global-shorts/odd_factory_v6.py'
+      - '.github/workflows/odd-factory-v6.yml'
+  workflow_dispatch:
+jobs:
+  render:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Blender and FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y blender ffmpeg
+          blender --version
+      - name: Render diagnostic and 3-second proof
+        run: |
+          blender -b -t 2 --python global-shorts/odd_factory_v6.py
+          ffmpeg -hide_banner -loglevel error -y -framerate 30 -i output/frame_%04d.png -c:v libx264 -pix_fmt yuv420p -crf 18 -movflags +faststart output/odd_factory_v6_proof.mp4
+          ffprobe -v error -show_entries format=duration -show_entries stream=width,height,r_frame_rate -of default=noprint_wrappers=1 output/odd_factory_v6_proof.mp4
+      - name: Upload video and diagnostic image
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: odd-factory-v6-render
+          path: |
+            output/diagnostic.png
+            output/odd_factory_v6_proof.mp4
+          if-no-files-found: warn
