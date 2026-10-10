@@ -61,7 +61,14 @@ for obj in s.objects:
   assert len(obj.data.vertices)>0, 'Empty gear mesh'
 assert s.frame_end-s.frame_start+1==300
 s.render.image_settings.file_format='PNG'
-s.frame_set(30);s.render.filepath=os.path.abspath('output/diagnostic.png')
+s.frame_set(30)
+if os.environ.get('ODD_FACTORY_SMOKE') == '1':
+ s.render.resolution_percentage=25
+ s.render.filepath=os.path.abspath('output/smoke.png')
+ bpy.ops.render.render(write_still=True)
+ print('SMOKE_RENDER_OK')
+ raise SystemExit(0)
+s.render.filepath=os.path.abspath('output/diagnostic.png')
 bpy.ops.render.render(write_still=True)
 s.render.resolution_percentage=100
 s.render.image_settings.color_mode='RGB'
