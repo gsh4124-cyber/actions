@@ -49,6 +49,13 @@ jobs:
           pathlib.Path('output/validation.json').write_text(json.dumps({'status':'TECHNICAL_PASS','resolution':'1080x1920','fps':30,'duration':float(meta['format']['duration']),'visual_qa':'NOT_VERIFIED','publish_approved':False},indent=2))
           print('Technical validation passed; visual QA still required')
           PY
+      - name: Confirm publishing remains blocked without visual QA
+        run: |
+          if python3 global-shorts/validate_release.py; then
+            echo 'Unexpected release approval without visual review' >&2
+            exit 1
+          fi
+          echo 'Correct: publication remains blocked until actual video is reviewed'
       - name: Upload diagnostics even on failure
         if: always()
         uses: actions/upload-artifact@v4
