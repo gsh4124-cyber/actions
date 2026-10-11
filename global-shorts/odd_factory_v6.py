@@ -5,6 +5,8 @@ bpy.ops.object.delete(use_global=False)
 s=bpy.context.scene
 s.render.engine='BLENDER_EEVEE_NEXT' if bpy.app.version >= (4,2,0) else 'BLENDER_EEVEE'
 s.render.resolution_x=1080;s.render.resolution_y=1920;s.render.resolution_percentage=100;s.render.fps=30
+# 32 Eevee samples preserve the approved scene while fitting the hosted-runner render budget.
+s.eevee.taa_render_samples=32
 s.frame_start=1;s.frame_end=300
 s.world.color=(0.025,0.025,0.03)
 def material(name,rgb,metal,rough):
