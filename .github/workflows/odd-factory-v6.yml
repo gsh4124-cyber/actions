@@ -39,7 +39,7 @@ jobs:
         run: |
           mkdir -p output
           set -o pipefail
-          blender -b -t 2 --python global-shorts/odd_factory_v6.py 2>&1 | tee output/blender.log
+          blender -b -t 0 --python global-shorts/odd_factory_v6.py 2>&1 | tee output/blender.log
           test -s output/diagnostic.png
           test "$(find output -maxdepth 1 -name 'frame_*.png' | wc -l)" -eq 300
       - name: Encode video
