@@ -47,13 +47,13 @@ for row in range(3):
   a=gear('GearA'+str(idx),x-.325,y,steel)
   b=gear('GearB'+str(idx),x+.325,y,brass)
   for frame in (1,300):
-   t=(frame-1)/30*1.3
+   t=(frame-1)/30*2.5
    a.rotation_euler.z=t;b.rotation_euler.z=math.pi/16+(t if idx==4 else -t)
    a.keyframe_insert(data_path='rotation_euler',index=2,frame=frame)
    b.keyframe_insert(data_path='rotation_euler',index=2,frame=frame)
 bpy.ops.object.camera_add(location=(0,0,13))
 cam=bpy.context.object;cam.rotation_euler=(Vector((0,0,0))-cam.location).to_track_quat('-Z','Y').to_euler()
-cam.data.type='ORTHO';cam.data.ortho_scale=10.0;s.camera=cam
+cam.data.type='ORTHO';cam.data.ortho_scale=8.5;s.camera=cam
 # Regression guard: every gear and mount must remain inside the portrait frame.
 # Orthographic scale is vertical span; horizontal span scales with 1080/1920.
 assert abs(cam.location.x)<1e-6 and abs(cam.location.y)<1e-6, 'Camera must be centered overhead'
