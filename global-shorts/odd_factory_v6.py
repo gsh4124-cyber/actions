@@ -17,7 +17,6 @@ def material(name,rgb,metal,rough):
 steel=material('Steel',(.4,.47,.52),.8,.27)
 brass=material('Brass',(.65,.38,.13),.85,.24)
 black=material('Graphite',(.025,.035,.05),.4,.42)
-accent=material('Center anomaly accent',(.95,.17,.10),.65,.25)
 def cyl(name,loc,r,d,mat):
  bpy.ops.mesh.primitive_cylinder_add(vertices=48,radius=r,depth=d,location=loc)
  o=bpy.context.object;o.name=name;o.data.materials.append(mat)
@@ -46,7 +45,7 @@ for row in range(3):
   idx=row*3+col;x=(col-1)*1.65;y=(1-row)*1.7
   cyl('Mount'+str(idx),(x,y,-.16),.82,.12,black)
   a=gear('GearA'+str(idx),x-.325,y,steel)
-  b=gear('GearB'+str(idx),x+.325,y,accent if idx==4 else brass)
+  b=gear('GearB'+str(idx),x+.325,y,brass)
   for frame in (1,300):
    t=(frame-1)/30*1.3
    a.rotation_euler.z=t;b.rotation_euler.z=math.pi/16+(t if idx==4 else -t)
