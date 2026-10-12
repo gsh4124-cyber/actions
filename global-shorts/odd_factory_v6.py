@@ -54,6 +54,17 @@ for row in range(3):
 bpy.ops.object.camera_add(location=(0,0,13))
 cam=bpy.context.object;cam.rotation_euler=(Vector((0,0,0))-cam.location).to_track_quat('-Z','Y').to_euler()
 cam.data.type='ORTHO';cam.data.ortho_scale=10.0;s.camera=cam
+# Regression guard: every gear and mount must remain inside the portrait frame.
+# Orthographic scale is vertical span; horizontal span scales with 1080/1920.
+assert abs(cam.location.x)<1e-6 and abs(cam.location.y)<1e-6, 'Camera must be centered overhead'
+assert abs(cam.rotation_euler.x)<1e-5, 'Camera must point vertically down'
+frame_half_width=cam.data.ortho_scale*s.render.resolution_x/s.render.resolution_y/2
+frame_half_height=cam.data.ortho_scale/2
+gear_edge=1.65+.325+.355
+mount_edge=1.65+.82
+assert max(gear_edge,mount_edge)+.12 < frame_half_width, 'Side gears/mounts cropped'
+assert 1.7+.82+.12 < frame_half_height, 'Top/bottom mounts cropped'
+
 for name,loc,power,size in [('Key',(1,-3,8),1600,5),('Fill',(-5,0,5),950,5),('Rim',(3,5,7),2100,4)]:
  bpy.ops.object.light_add(type='AREA',location=loc);o=bpy.context.object;o.name=name;o.data.energy=power;o.data.shape='DISK';o.data.size=size
  o.rotation_euler=(Vector((0,0,0))-o.location).to_track_quat('-Z','Y').to_euler()
