@@ -17,6 +17,7 @@ def material(name,rgb,metal,rough):
 steel=material('Steel',(.4,.47,.52),.8,.27)
 brass=material('Brass',(.65,.38,.13),.85,.24)
 black=material('Graphite',(.025,.035,.05),.4,.42)
+accent=material('Center anomaly accent',(.95,.17,.10),.65,.25)
 def cyl(name,loc,r,d,mat):
  bpy.ops.mesh.primitive_cylinder_add(vertices=48,radius=r,depth=d,location=loc)
  o=bpy.context.object;o.name=name;o.data.materials.append(mat)
@@ -45,15 +46,15 @@ for row in range(3):
   idx=row*3+col;x=(col-1)*1.65;y=(1-row)*1.7
   cyl('Mount'+str(idx),(x,y,-.16),.82,.12,black)
   a=gear('GearA'+str(idx),x-.325,y,steel)
-  b=gear('GearB'+str(idx),x+.325,y,brass)
+  b=gear('GearB'+str(idx),x+.325,y,accent if idx==4 else brass)
   for frame in (1,300):
    t=(frame-1)/30*1.3
    a.rotation_euler.z=t;b.rotation_euler.z=math.pi/16+(t if idx==4 else -t)
    a.keyframe_insert(data_path='rotation_euler',index=2,frame=frame)
    b.keyframe_insert(data_path='rotation_euler',index=2,frame=frame)
-bpy.ops.object.camera_add(location=(0,-10,13))
+bpy.ops.object.camera_add(location=(0,0,13))
 cam=bpy.context.object;cam.rotation_euler=(Vector((0,0,0))-cam.location).to_track_quat('-Z','Y').to_euler()
-cam.data.type='ORTHO';cam.data.ortho_scale=7.4;s.camera=cam
+cam.data.type='ORTHO';cam.data.ortho_scale=10.0;s.camera=cam
 for name,loc,power,size in [('Key',(1,-3,8),1600,5),('Fill',(-5,0,5),950,5),('Rim',(3,5,7),2100,4)]:
  bpy.ops.object.light_add(type='AREA',location=loc);o=bpy.context.object;o.name=name;o.data.energy=power;o.data.shape='DISK';o.data.size=size
  o.rotation_euler=(Vector((0,0,0))-o.location).to_track_quat('-Z','Y').to_euler()
