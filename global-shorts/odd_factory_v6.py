@@ -53,7 +53,7 @@ for row in range(3):
    b.keyframe_insert(data_path='rotation_euler',index=2,frame=frame)
 bpy.ops.object.camera_add(location=(0,0,13))
 cam=bpy.context.object;cam.rotation_euler=(Vector((0,0,0))-cam.location).to_track_quat('-Z','Y').to_euler()
-cam.data.type='ORTHO';cam.data.ortho_scale=8.5;s.camera=cam
+cam.data.type='ORTHO';cam.data.ortho_scale=9.4;s.camera=cam
 # Regression guard: every gear and mount must remain inside the portrait frame.
 # Orthographic scale is vertical span; horizontal span scales with 1080/1920.
 assert abs(cam.location.x)<1e-6 and abs(cam.location.y)<1e-6, 'Camera must be centered overhead'
