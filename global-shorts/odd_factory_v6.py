@@ -17,6 +17,7 @@ def material(name,rgb,metal,rough):
 steel=material('Steel',(.4,.47,.52),.8,.27)
 brass=material('Brass',(.65,.38,.13),.85,.24)
 black=material('Graphite',(.025,.035,.05),.4,.42)
+cyan=material('Rotation Indicator',(.01,.95,.87),.05,.25)
 def cyl(name,loc,r,d,mat):
  bpy.ops.mesh.primitive_cylinder_add(vertices=48,radius=r,depth=d,location=loc)
  o=bpy.context.object;o.name=name;o.data.materials.append(mat)
@@ -39,6 +40,15 @@ def gear(name,x,y,mat):
  bev=ob.modifiers.new('Bevel','BEVEL');bev.width=.006;bev.segments=2
  # Keep bevel, avoid unsupported weighted-normal modifier.
  cyl(name+' axle',(x,y,.20),.06,.17,black)
+ # The uniform 16-tooth gear has rotational symmetry: viewers cannot tell
+ # clockwise from anticlockwise at Shorts speed without a fiducial marker.
+ # Add the same bright radial marker to EVERY gear so it never leaks the answer.
+ bpy.ops.mesh.primitive_cube_add(size=1,location=(0,0,0))
+ dot=bpy.context.object;dot.name=name+' Rotation Indicator'
+ dot.parent=ob
+ dot.location=(.205,0,.095)
+ dot.scale=(.19,.070,.030)
+ dot.data.materials.append(cyan)
  return ob
 for row in range(3):
  for col in range(3):
@@ -47,10 +57,26 @@ for row in range(3):
   a=gear('GearA'+str(idx),x-.325,y,steel)
   b=gear('GearB'+str(idx),x+.325,y,brass)
   for frame in (1,300):
-   t=(frame-1)/30*2.5
+   t=(frame-1)/30*1.7
    a.rotation_euler.z=t;b.rotation_euler.z=math.pi/16+(t if idx==4 else -t)
    a.keyframe_insert(data_path='rotation_euler',index=2,frame=frame)
    b.keyframe_insert(data_path='rotation_euler',index=2,frame=frame)
+  # Consistent angular velocity makes direction and comparison legible.
+  for obj in (a,b):
+   if obj.animation_data and obj.animation_data.action:
+    for curve in obj.animation_data.action.fcurves:
+     for key in curve.keyframe_points:key.interpolation='LINEAR'
+# Mechanical/visibility regression guards, evaluated before any expensive render.
+markers=[obj for obj in s.objects if obj.name.endswith(' Rotation Indicator')]
+assert len(markers)==18, 'All 18 gears must have a visible directional marker'
+for row in range(3):
+ for col in range(3):
+  idx=row*3+col
+  a=s.objects['GearA'+str(idx)];b=s.objects['GearB'+str(idx)]
+  assert abs(a.rotation_euler.z)>1, 'Gear A needs readable motion'
+  expected_sign=1 if idx==4 else -1
+  delta=b.rotation_euler.z-math.pi/16
+  assert delta*expected_sign>1, 'Wrong-pair direction mismatch: '+str(idx)
 bpy.ops.object.camera_add(location=(0,0,13))
 cam=bpy.context.object;cam.rotation_euler=(Vector((0,0,0))-cam.location).to_track_quat('-Z','Y').to_euler()
 cam.data.type='ORTHO';cam.data.ortho_scale=9.4;s.camera=cam
