@@ -1,6 +1,7 @@
 name: Odd Factory V6 Blender render
 on:
   push:
+    branches: [main]
     paths:
       - 'global-shorts/odd_factory_v6.py'
       - 'global-shorts/validate_release.py'
