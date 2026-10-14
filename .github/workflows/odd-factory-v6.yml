@@ -12,6 +12,9 @@ on:
       - 'global-shorts/**'
       - '.github/workflows/odd-factory-v6.yml'
   workflow_dispatch:
+concurrency:
+  group: odd-factory-v6-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
@@ -57,7 +60,7 @@ jobs:
       - name: Validate video
         run: |
           python3 - <<'PY'
-          import json,subprocess,pathlib
+          import json,subprocess,pathlib,hashlib
           p=pathlib.Path('output/odd_factory_v6.mp4')
           assert p.exists() and p.stat().st_size>100000, 'MP4 missing or too small'
           meta=json.loads(subprocess.check_output(['ffprobe','-v','error','-show_streams','-show_format','-of','json',str(p)]))
@@ -65,7 +68,7 @@ jobs:
           assert (int(v['width']),int(v['height']))==(1080,1920), 'Unexpected resolution'
           assert v['r_frame_rate']=='30/1', 'Unexpected fps'
           assert 9.9<float(meta['format']['duration'])<10.1, 'Unexpected duration'
-          pathlib.Path('output/validation.json').write_text(json.dumps({'status':'TECHNICAL_PASS','resolution':'1080x1920','fps':30,'duration':float(meta['format']['duration']),'visual_qa':'NOT_VERIFIED','publish_approved':False},indent=2))
+          pathlib.Path('output/validation.json').write_text(json.dumps({'status':'TECHNICAL_PASS','resolution':'1080x1920','fps':30,'duration':float(meta['format']['duration']),'visual_qa':'NOT_VERIFIED','video_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'publish_approved':False},indent=2))
           print('Technical validation passed; visual QA still required')
           PY
       - name: Confirm publishing remains blocked without visual QA
