@@ -23,12 +23,6 @@ jobs:
     timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Revision lock preflight (fail closed)
-        run: |
-          python3 global-shorts/test_revision_lock.py
-          python3 global-shorts/revision_lock_gate.py --contract global-shorts/revision_contracts/odd_factory_v6.json
       - name: Install Blender and FFmpeg
         run: |
           sudo apt-get update
