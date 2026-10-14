@@ -67,6 +67,8 @@ for row in range(3):
     for curve in obj.animation_data.action.fcurves:
      for key in curve.keyframe_points:key.interpolation='LINEAR'
 # Mechanical/visibility regression guards, evaluated before any expensive render.
+# Evaluate the final keyed frame; reading the default frame 1 would see zero rotation.
+s.frame_set(300)
 markers=[obj for obj in s.objects if obj.name.endswith(' Rotation Indicator')]
 assert len(markers)==18, 'All 18 gears must have a visible directional marker'
 for row in range(3):
