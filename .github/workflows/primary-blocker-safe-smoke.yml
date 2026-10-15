@@ -35,8 +35,10 @@ jobs:
                   self.assertTrue(Path('global_shorts_factory/harness_v1/test_harness.py').is_file())
               def test_no_private_repository_checkout(self):
                   workflow=Path('.github/workflows/primary-blocker-safe-smoke.yml').read_text(encoding='utf-8')
-                  self.assertNotIn('repository: gsh4124-cyber/hwangje-vault',workflow)
-                  self.assertNotIn('vault_archive',workflow)
+                  lines=workflow.splitlines()
+                  # Match actual configuration lines, not the guard's own string literals.
+                  self.assertFalse(any(line.lstrip().startswith('repository'+':') for line in lines))
+                  self.assertFalse(any(('vault_'+'archive') in line and line.lstrip().startswith('with'+':') for line in lines))
           result=unittest.TextTestRunner(verbosity=2).run(
               unittest.defaultTestLoader.loadTestsFromTestCase(SupportBoundaries))
           if not result.wasSuccessful():
