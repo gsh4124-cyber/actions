@@ -1,0 +1,72 @@
+# TEMPORARY support-only workflow.
+# Public synthetic data ONLY. Never checkout or print the private Hwangje Vault.
+name: Temporary Marketing Logic Fallback Smoke
+on:
+  push:
+    paths:
+      - '.github/workflows/temporary-marketing-fallback-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: public-marketing-fallback-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  sanitized-smoke:
+    if: github.repository == 'gsh4124-cyber/actions'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Verify support-only boundary and synthetic decision logic
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import math
+
+          # This workflow is deliberately independent of all private Vault files,
+          # tokens, personal data and client data. Only made-up numbers are used.
+          counts = {"checks": 0}
+          def check(name, predicate):
+              counts["checks"] += 1
+              if not predicate:
+                  raise AssertionError("SYNTHETIC_FAIL:" + name)
+
+          # Causal incremental contribution ≠ attributed revenue.
+          base_buyers, exposed_buyers = 70, 90
+          unit_contribution, extra_cost = 25, 280
+          contribution = (exposed_buyers-base_buyers)*unit_contribution-extra_cost
+          check("positive_incremental_contribution", contribution == 220)
+          check("negative_incremental_contribution", (exposed_buyers-base_buyers)*unit_contribution-650 < 0)
+
+          # Reversal: aggregate click-through hides a composition imbalance.
+          a_high, a_low = 105/700, 9/300
+          b_high, b_low = 51/300, 28/700
+          check("simpson_segment_reversal", a_high < b_high and a_low < b_low)
+          check("simpson_aggregate_reversal", (105+9)/1000 > (51+28)/1000)
+
+          # Discounts can increase orders yet lower contribution.
+          previous = (14000-9000)*60
+          discounted = (12600-9000)*80
+          check("discount_can_reduce_contribution", discounted < previous)
+          needed = math.floor(previous/(12600-9000))+1
+          check("exact_break_even_units", needed == 84 and (needed-1)*3600 <= previous < needed*3600)
+
+          # Sample-ratio mismatch is an experiment-validity diagnostic.
+          chi_square = ((3100-2500)**2+(1900-2500)**2)/2500
+          check("srm_diagnostic", chi_square == 288)
+
+          # An unauthorized contact must not be converted into an experiment.
+          contact_consent = False
+          privacy_lawful_basis_verified = False
+          permit_contact = contact_consent and privacy_lawful_basis_verified
+          check("unknown_contact_permission_halts", not permit_contact)
+          check("valid_approved_nonpublic_draft", not permit_contact and True)
+
+          assert counts["checks"] == 9
+          print("PUBLIC_SANITIZED_MARKETING_LOGIC_PASS", counts["checks"])
+          print("PUBLIC_ONLY_NO_PRIVATE_VAULT_TEST_NO_OWNER_TRANSFER")
+          PY
