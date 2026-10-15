@@ -1,6 +1,7 @@
 name: Odd Factory V6 Blender render
 on:
   push:
+    branches: [main]
     paths:
       - 'global-shorts/odd_factory_v6.py'
       - 'global-shorts/validate_release.py'
@@ -11,6 +12,9 @@ on:
       - 'global-shorts/**'
       - '.github/workflows/odd-factory-v6.yml'
   workflow_dispatch:
+concurrency:
+  group: odd-factory-v6-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
@@ -19,10 +23,16 @@ jobs:
     timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Revision lock preflight (fail closed)
+        run: |
+          python3 global-shorts/test_revision_lock.py
+          python3 global-shorts/revision_lock_gate.py --contract global-shorts/revision_contracts/odd_factory_v6.json
       - name: Install Blender and FFmpeg
         run: |
           sudo apt-get update
-          sudo apt-get install -y blender ffmpeg
+          sudo apt-get install -y blender ffmpeg fonts-dejavu-core libegl1 libgl1 libgles2 libopengl0 libxrender1 libxkbcommon0
           blender --version
           ffmpeg -version | head -n 1
       - name: Syntax and release gate regression tests
@@ -45,10 +55,18 @@ jobs:
       - name: Encode video
         run: |
           ffmpeg -hide_banner -loglevel error -y -framerate 30 -start_number 1 -i output/frame_%04d.png -c:v libx264 -pix_fmt yuv420p -crf 18 -movflags +faststart output/odd_factory_v6.mp4
+      - name: Apply commercial clarity overlay
+        run: |
+          ffmpeg -hide_banner -loglevel error -y -i output/odd_factory_v6.mp4 \
+            -vf "drawbox=x=60:y=90:w=960:h=150:color=black@0.55:t=fill:enable='lt(t,7.5)',drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='WHICH PAIR MOVES WRONG?':fontcolor=white:fontsize=54:x=(w-text_w)/2:y=135:enable='lt(t,7.5)',drawbox=x=360:y=745:w=360:h=430:color=0xFF4D4D@0.9:t=14:enable='gte(t,7.5)',drawbox=x=110:y=1550:w=860:h=150:color=black@0.65:t=fill:enable='gte(t,7.5)',drawtext=fontfile=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf:text='CENTER PAIR!':fontcolor=0xFFDD55:fontsize=76:x=(w-text_w)/2:y=1585:enable='gte(t,7.5)'" \
+            -c:v libx264 -crf 18 -preset medium -pix_fmt yuv420p -an -movflags +faststart output/odd_factory_v6_fixed.mp4
+          mv output/odd_factory_v6_fixed.mp4 output/odd_factory_v6.mp4
+          ffmpeg -hide_banner -loglevel error -y -ss 0.5 -i output/odd_factory_v6.mp4 -frames:v 1 output/proof_challenge.png
+          ffmpeg -hide_banner -loglevel error -y -ss 8.5 -i output/odd_factory_v6.mp4 -frames:v 1 output/proof_reveal.png
       - name: Validate video
         run: |
           python3 - <<'PY'
-          import json,subprocess,pathlib
+          import json,subprocess,pathlib,hashlib
           p=pathlib.Path('output/odd_factory_v6.mp4')
           assert p.exists() and p.stat().st_size>100000, 'MP4 missing or too small'
           meta=json.loads(subprocess.check_output(['ffprobe','-v','error','-show_streams','-show_format','-of','json',str(p)]))
@@ -56,7 +74,7 @@ jobs:
           assert (int(v['width']),int(v['height']))==(1080,1920), 'Unexpected resolution'
           assert v['r_frame_rate']=='30/1', 'Unexpected fps'
           assert 9.9<float(meta['format']['duration'])<10.1, 'Unexpected duration'
-          pathlib.Path('output/validation.json').write_text(json.dumps({'status':'TECHNICAL_PASS','resolution':'1080x1920','fps':30,'duration':float(meta['format']['duration']),'visual_qa':'NOT_VERIFIED','publish_approved':False},indent=2))
+          pathlib.Path('output/validation.json').write_text(json.dumps({'status':'TECHNICAL_PASS','resolution':'1080x1920','fps':30,'duration':float(meta['format']['duration']),'visual_qa':'NOT_VERIFIED','video_sha256':hashlib.sha256(p.read_bytes()).hexdigest(),'publish_approved':False},indent=2))
           print('Technical validation passed; visual QA still required')
           PY
       - name: Confirm publishing remains blocked without visual QA
@@ -75,6 +93,8 @@ jobs:
             output/smoke.png
             output/smoke.log
             output/diagnostic.png
+            output/proof_challenge.png
+            output/proof_reveal.png
             output/odd_factory_v6.mp4
             output/validation.json
             output/blender.log

@@ -5,6 +5,8 @@ bpy.ops.object.delete(use_global=False)
 s=bpy.context.scene
 s.render.engine='BLENDER_EEVEE_NEXT' if bpy.app.version >= (4,2,0) else 'BLENDER_EEVEE'
 s.render.resolution_x=1080;s.render.resolution_y=1920;s.render.resolution_percentage=100;s.render.fps=30
+# 32 Eevee samples preserve the approved scene while fitting the hosted-runner render budget.
+s.eevee.taa_render_samples=32
 s.frame_start=1;s.frame_end=300
 s.world.color=(0.025,0.025,0.03)
 def material(name,rgb,metal,rough):
@@ -15,11 +17,13 @@ def material(name,rgb,metal,rough):
 steel=material('Steel',(.4,.47,.52),.8,.27)
 brass=material('Brass',(.65,.38,.13),.85,.24)
 black=material('Graphite',(.025,.035,.05),.4,.42)
+cyan=material('Rotation Indicator',(.01,.95,.87),.05,.25)
 def cyl(name,loc,r,d,mat):
  bpy.ops.mesh.primitive_cylinder_add(vertices=48,radius=r,depth=d,location=loc)
  o=bpy.context.object;o.name=name;o.data.materials.append(mat)
  mod=o.modifiers.new('Bevel','BEVEL');mod.width=.012;mod.segments=2
- o.modifiers.new('Normals','WEIGHTED_NORMAL')
+ o.data.use_auto_smooth=True if hasattr(o.data,'use_auto_smooth') else None
+ # Weighted normals are optional for these flat mechanical surfaces.
  return o
 def gear(name,x,y,mat):
  n=16;pts=[]
@@ -34,8 +38,17 @@ def gear(name,x,y,mat):
  mesh=bpy.data.meshes.new(name);mesh.from_pydata(vertices,[],faces);mesh.update()
  ob=bpy.data.objects.new(name,mesh);s.collection.objects.link(ob);ob.location=(x,y,.06);ob.data.materials.append(mat)
  bev=ob.modifiers.new('Bevel','BEVEL');bev.width=.006;bev.segments=2
- ob.modifiers.new('Normals','WEIGHTED_NORMAL')
+ # Keep bevel, avoid unsupported weighted-normal modifier.
  cyl(name+' axle',(x,y,.20),.06,.17,black)
+ # The uniform 16-tooth gear has rotational symmetry: viewers cannot tell
+ # clockwise from anticlockwise at Shorts speed without a fiducial marker.
+ # Add the same bright radial marker to EVERY gear so it never leaks the answer.
+ bpy.ops.mesh.primitive_cube_add(size=1,location=(0,0,0))
+ dot=bpy.context.object;dot.name=name+' Rotation Indicator'
+ dot.parent=ob
+ dot.location=(.205,0,.095)
+ dot.scale=(.19,.070,.030)
+ dot.data.materials.append(cyan)
  return ob
 for row in range(3):
  for col in range(3):
@@ -44,13 +57,42 @@ for row in range(3):
   a=gear('GearA'+str(idx),x-.325,y,steel)
   b=gear('GearB'+str(idx),x+.325,y,brass)
   for frame in (1,300):
-   t=(frame-1)/30*1.3
+   t=(frame-1)/30*1.7
    a.rotation_euler.z=t;b.rotation_euler.z=math.pi/16+(t if idx==4 else -t)
    a.keyframe_insert(data_path='rotation_euler',index=2,frame=frame)
    b.keyframe_insert(data_path='rotation_euler',index=2,frame=frame)
-bpy.ops.object.camera_add(location=(0,-10,13))
+  # Consistent angular velocity makes direction and comparison legible.
+  for obj in (a,b):
+   if obj.animation_data and obj.animation_data.action:
+    for curve in obj.animation_data.action.fcurves:
+     for key in curve.keyframe_points:key.interpolation='LINEAR'
+# Mechanical/visibility regression guards, evaluated before any expensive render.
+# Evaluate the final keyed frame; reading the default frame 1 would see zero rotation.
+s.frame_set(300)
+markers=[obj for obj in s.objects if obj.name.endswith(' Rotation Indicator')]
+assert len(markers)==18, 'All 18 gears must have a visible directional marker'
+for row in range(3):
+ for col in range(3):
+  idx=row*3+col
+  a=s.objects['GearA'+str(idx)];b=s.objects['GearB'+str(idx)]
+  assert abs(a.rotation_euler.z)>1, 'Gear A needs readable motion'
+  expected_sign=1 if idx==4 else -1
+  delta=b.rotation_euler.z-math.pi/16
+  assert delta*expected_sign>1, 'Wrong-pair direction mismatch: '+str(idx)
+bpy.ops.object.camera_add(location=(0,0,13))
 cam=bpy.context.object;cam.rotation_euler=(Vector((0,0,0))-cam.location).to_track_quat('-Z','Y').to_euler()
-cam.data.type='ORTHO';cam.data.ortho_scale=7.4;s.camera=cam
+cam.data.type='ORTHO';cam.data.ortho_scale=9.4;s.camera=cam
+# Regression guard: every gear and mount must remain inside the portrait frame.
+# Orthographic scale is vertical span; horizontal span scales with 1080/1920.
+assert abs(cam.location.x)<1e-6 and abs(cam.location.y)<1e-6, 'Camera must be centered overhead'
+assert abs(cam.rotation_euler.x)<1e-5, 'Camera must point vertically down'
+frame_half_width=cam.data.ortho_scale*s.render.resolution_x/s.render.resolution_y/2
+frame_half_height=cam.data.ortho_scale/2
+gear_edge=1.65+.325+.355
+mount_edge=1.65+.82
+assert max(gear_edge,mount_edge)+.12 < frame_half_width, 'Side gears/mounts cropped'
+assert 1.7+.82+.12 < frame_half_height, 'Top/bottom mounts cropped'
+
 for name,loc,power,size in [('Key',(1,-3,8),1600,5),('Fill',(-5,0,5),950,5),('Rim',(3,5,7),2100,4)]:
  bpy.ops.object.light_add(type='AREA',location=loc);o=bpy.context.object;o.name=name;o.data.energy=power;o.data.shape='DISK';o.data.size=size
  o.rotation_euler=(Vector((0,0,0))-o.location).to_track_quat('-Z','Y').to_euler()
