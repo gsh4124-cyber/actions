@@ -1,0 +1,52 @@
+name: Marketing fallback smoke (synthetic only)
+on:
+  workflow_dispatch:
+    inputs:
+      global_shorts_priority_clear:
+        description: "Confirm Global Shorts priority and runner capacity are clear"
+        required: true
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: marketing-fallback-smoke
+  cancel-in-progress: false
+jobs:
+  synthetic-smoke:
+    if: ${{ inputs.global_shorts_priority_clear == true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Synthetic marketing decision invariants (no Vault checkout)
+        shell: bash
+        run: |
+          python - <<'PY'
+          import math
+          from dataclasses import dataclass
+          @dataclass
+          class Case:
+              name: str
+              control: int
+              treatment: int
+              n: int
+              margin: float
+              extra_cost: float
+          cases = [
+              Case("loss_point",100,110,1000,40,800),
+              Case("positive_uncertain",100,140,1000,40,800),
+              Case("positive_clear",100,180,1000,40,800),
+          ]
+          expected = {"loss_point": -400, "positive_uncertain": 800, "positive_clear": 2400}
+          for c in cases:
+              delta = (c.treatment-c.control)*c.margin-c.extra_cost
+              p0,p1=c.control/c.n,c.treatment/c.n
+              se=math.sqrt(p0*(1-p0)/c.n+p1*(1-p1)/c.n)
+              lower=delta-1.96*se*c.n*c.margin
+              assert delta == expected[c.name]
+              assert (lower>0) == (c.name=="positive_clear")
+              print(c.name, "incremental_profit=", delta, "illustrative_lower=", round(lower,2))
+          # These checks only exercise public synthetic decision arithmetic.
+          # They do not establish the presence or correctness of private Vault Skill rules.
+          print("FALLBACK_SYNTHETIC_SMOKE_PASS")
+          PY
