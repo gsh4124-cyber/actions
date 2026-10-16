@@ -1,0 +1,52 @@
+name: Factory BOOT fallback (synthetic contract)
+on:
+  workflow_dispatch:
+    inputs:
+      global_shorts_priority_clear:
+        description: "Confirm Global Shorts priority and runner capacity are clear"
+        required: true
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: factory-boot-fallback
+  cancel-in-progress: false
+jobs:
+  synthetic-boot-contract:
+    if: ${{ inputs.global_shorts_priority_clear == true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Verify five-owner BOOT routing contract without private Vault
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import PurePosixPath
+          import hashlib
+          owners = (
+              "직장/보험/_INDEX.md",
+              "직장/AI 해결사/_INDEX.md",
+              "직장/공모전·사업기회/_INDEX.md",
+              "직장/콘텐츠/AI 쇼핑 콘텐츠/_INDEX.md",
+              "직장/콘텐츠/글로벌 숏츠/_INDEX.md",
+          )
+          def routes(owner, task):
+              paths = ["START_HERE.md", owner]
+              if owner in owners and task in ("boot", "operate"):
+                  workflow = str(PurePosixPath(owner).parent / "세션_운영구조.md")
+                  if workflow not in paths:
+                      paths.append(workflow)
+              return paths
+          count = 0
+          for owner in owners:
+              expected = str(PurePosixPath(owner).parent / "세션_운영구조.md")
+              for task in ("boot", "operate"):
+                  paths = routes(owner, task)
+                  assert paths.count(expected) == 1, (owner, task)
+                  count += 1
+              assert expected not in routes(owner, "qa")
+          assert count == 10
+          print("SYNTHETIC_FACTORY_BOOT_CONTRACT_PASS cases=10 owners=5")
+          print("SCOPE: synthetic routing only; private Vault code, live state and remote-main freshness NOT tested")
+          PY
