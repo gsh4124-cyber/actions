@@ -1,0 +1,35 @@
+name: Vault Windows QA (manual isolated runner)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  regression:
+    if: github.repository == 'gsh4124-cyber/hwangje-vault' && github.event.repository.private == true && github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, Windows, X64, hwangje-vault-qa]
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Offline regression with preinstalled Python Pillow pytest PyYAML fonts and FFmpeg
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python -c "import PIL,pytest,yaml,matplotlib; assert PIL.__version__ == '11.3.0'"
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned QA dependencies missing' }
+          python -c "import matplotlib,pathlib,shutil; [shutil.copyfile(pathlib.Path(matplotlib.get_data_path())/'fonts/ttf'/name,name) for name in ('DejaVuSans.ttf','DejaVuSans-Bold.ttf')]"
+          if ($LASTEXITCODE -ne 0) { throw 'DejaVu font provisioning failed' }
+          python -c "from PIL import ImageFont; ImageFont.truetype('DejaVuSans.ttf', 24)"
+          if ($LASTEXITCODE -ne 0) { throw 'DejaVuSans.ttf missing from checkout root or font search path' }
+          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) { throw 'ffmpeg missing' }
+          if (-not (Get-Command ffprobe -ErrorAction SilentlyContinue)) { throw 'ffprobe missing' }
+          python scripts/local_regression.py --root . --output "$env:RUNNER_TEMP/vault-qa"
+          if ($LASTEXITCODE -ne 0) { throw 'Regression not fully passed; retain runner temp logs' }
+      - name: Central source contracts and frozen assets
+        shell: powershell
+        run: |
+          python scripts/harness_regression.py
+          if ($LASTEXITCODE -ne 0) { throw 'Harness failed' }
+          python scripts/shopping_asset_guard.py --root .
+          if ($LASTEXITCODE -ne 0) { throw 'Frozen asset check failed' }
