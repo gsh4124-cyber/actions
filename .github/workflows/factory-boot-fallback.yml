@@ -51,6 +51,18 @@ jobs:
                   count += 1
               assert expected not in routes(owner, "qa")
           assert count == 10
-          print("SYNTHETIC_FACTORY_BOOT_CONTRACT_PASS cases=10 owners=5")
+          negative = 0
+          for owner in owners:
+              for task in ("qa", "publish", "marketing", "close", "edit", "research"):
+                  workflow = str(PurePosixPath(owner).parent / "세션_운영구조.md")
+                  assert workflow not in routes(owner, task), (owner, task)
+                  negative += 1
+              for other in owners:
+                  if other == owner:
+                      continue
+                  foreign = str(PurePosixPath(other).parent / "세션_운영구조.md")
+                  assert foreign not in routes(owner, "boot"), (owner, other)
+          assert negative == 30
+          print("SYNTHETIC_FACTORY_BOOT_CONTRACT_PASS cases=10 negative=30 owners=5")
           print("SCOPE: synthetic routing only; private Vault code, live state and remote-main freshness NOT tested")
           PY
