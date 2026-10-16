@@ -10,14 +10,15 @@ permissions:
 jobs:
   support:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 5
     steps:
-      - name: Verify secondary runner Python and workflow
+      - name: Checkout primary Vault with existing runner identity
+        uses: actions/checkout@v4
+        with:
+          repository: gsh4124-cyber/hwangje-vault
+          ref: main
+          persist-credentials: false
+      - name: Execute actual factory BOOT regression
         run: |
-          python --version
-          python - <<'PY'
-          import pathlib
-          owners = ["보험", "AI 해결사", "공모전·사업기회", "AI 쇼핑 콘텐츠", "글로벌 숏츠"]
-          assert len(owners) == 5
-          print("SECONDARY_RUNNER_READY; VAULT_CHECKOUT_NOT_PERFORMED")
-          PY
+          python -m unittest discover -s scripts -p 'test_skill_bootstrap_factory.py' -v
+          python -m unittest discover -s scripts -p 'test_skill_bootstrap.py' -v
