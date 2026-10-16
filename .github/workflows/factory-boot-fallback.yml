@@ -1,5 +1,9 @@
 name: Factory BOOT fallback (synthetic contract)
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/factory-boot-fallback.yml'
   workflow_dispatch:
     inputs:
       global_shorts_priority_clear:
@@ -14,7 +18,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   synthetic-boot-contract:
-    if: ${{ inputs.global_shorts_priority_clear == true }}
+    if: ${{ github.event_name == 'push' || inputs.global_shorts_priority_clear == true }}
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
