@@ -1,0 +1,23 @@
+name: Vault BOOT regression support
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/vault-boot-regression-support.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  support:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Verify secondary runner Python and workflow
+        run: |
+          python --version
+          python - <<'PY'
+          import pathlib
+          owners = ["보험", "AI 해결사", "공모전·사업기회", "AI 쇼핑 콘텐츠", "글로벌 숏츠"]
+          assert len(owners) == 5
+          print("SECONDARY_RUNNER_READY; VAULT_CHECKOUT_NOT_PERFORMED")
+          PY
