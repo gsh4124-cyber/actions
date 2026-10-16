@@ -12,11 +12,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Checkout primary Vault with existing runner identity
+      - name: Verify scoped Vault read access is configured
+        env:
+          VAULT_READ_TOKEN: ${{ secrets.VAULT_READ_TOKEN }}
+        run: |
+          if [ -z "$VAULT_READ_TOKEN" ]; then
+            echo '::error::VAULT_READ_TOKEN is not configured in the support repository; private Vault checkout cannot proceed.'
+            exit 1
+          fi
+      - name: Checkout primary Vault with scoped read access
         uses: actions/checkout@v4
         with:
           repository: gsh4124-cyber/hwangje-vault
           ref: main
+          token: ${{ secrets.VAULT_READ_TOKEN }}
           persist-credentials: false
       - name: Execute actual factory BOOT regression
         run: |
